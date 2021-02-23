@@ -3,12 +3,52 @@ const chalk = require('chalk');
 const { Command } = require('commander');
 const puppeteer = require('puppeteer');
 const formControlSelector = '[class="form-control"]';
-
-
+const fs = require('fs');
 
 const getStrBetween = (string, a1, a2) => {
     return string.split(a1).pop().split(a2)[0]
 }
+
+const updateProblemCache = async () => {
+    return new Promise(async resolve => {
+        const browser = await puppeteer.launch({headless: false,});
+        const page = await browser.newPage();
+        let url = 'https://leetcode.com/problemset/all/'
+    
+    
+    
+    
+        await page.goto(url);
+    
+        // show all problems
+        if (options.problem === undefined) { 
+            await page.waitForSelector(formControlSelector)
+            await page.select(formControlSelector, '9007199254740991')
+    
+    
+            const data = await page.$$eval('table tr td', tds => tds.map((td) => {    
+                if (td.outerHTML.includes('label="#"') || td.outerHTML.includes('label="Title"')) {
+                    return td.outerHTML;
+                }
+                return null;
+            }).filter(d => d != null));
+    
+            
+    
+            let parsedData = [];
+            for (i = 0; i < data.length; i+=2) {
+                const problemID = getStrBetween(data[i], '">', '</');
+                const problemName = getStrBetween(data[i+1], '<td value="', '" label="Title">');
+                const href = getStrBetween(data[i+1], 'href="', '" data-s');
+                parsedData.push(`${problemID},${problemName},${href}`)
+            }
+    
+           fs.writeFileSync('problems.txt', parsedData.join('\n'));
+           resolve()
+        }
+    })
+}
+
 
 const parseDifficulty = (value) => {
     switch(value) {
@@ -37,49 +77,14 @@ const program = new Command()
 
 const options = program.opts();
 
-
-
 (async () => {
-    const browser = await puppeteer.launch({headless: false,});
-    const page = await browser.newPage();
-    let url = 'https://leetcode.com/problemset/all/'
-
-    if (options.difficulty !== undefined) {
-        url += `?difficulty=${options.difficulty}`
-    }
-
-    if (options.problem !== undefined) {
-        url += `?search=${options.problem}`
-    }
-
-
-    await page.goto(url);
-
-    // show all problems
-    if (options.problem === undefined) { 
-        await page.waitForSelector(formControlSelector)
-        await page.select(formControlSelector, '9007199254740991')
-
-
-        const data = await page.$$eval('table tr td', tds => tds.map((td) => {
-            if (td.outerHTML.includes('label="#"') || td.outerHTML.includes('label="Title"')) {
-                return td.outerHTML;
-            }
-            return null;
-        }).filter(d => d != null));
-
-        
-
-        let parsedData = [];
-        for (i = 0; i < data.length; i+=2) {
-            const problemID = getStrBetween(data[i], '">', '</');
-            const problemName = getStrBetween(data[i+1], 'e="', '" l');
-            const href = getStrBetween(data[i+1], 'href="', '" data-s');
-            parsedData.push(`${problemID},${problemName},${href}`)
-        }
-
-        console.log(parsedData)
-
-
-    }
+    await updateProblemCache();
 })();
+// if (options.difficulty !== undefined) {
+//     url += `?difficulty=${options.difficulty}`
+// }
+
+// if (options.problem !== undefined) {
+//     url += `?search=${options.problem}`
+// }
+
