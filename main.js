@@ -4,17 +4,15 @@ const { Command } = require('commander');
 const puppeteer = require('puppeteer');
 const formControlSelector = '[class="form-control"]';
 const fs = require('fs');
+const { url } = require('inspector');
 
-const getStrBetween = (string, a1, a2) => {
-    return string.split(a1).pop().split(a2)[0]
-}
 
 const updateProblemCache = async (page) => {
     return new Promise(async resolve => {
-        let url = 'https://leetcode.com/problemset/all/'
+        let url = 'https://leetcode.com/storedProblemset/all/'
         await page.goto(url);
     
-        // show all problems
+        // show all storedProblems
         if (options.problem === undefined) { 
             await page.waitForSelector(formControlSelector)
             await page.select(formControlSelector, '9007199254740991')
@@ -38,11 +36,11 @@ const updateProblemCache = async (page) => {
 
 
             const json = {
-                problems: []
+                storedProblems: []
             }
 
             for (i = 0; i < ids.length; i++) {
-               json.problems.push({
+               json.storedProblems.push({
                     id: ids[i],
                     name: names[i],
                     difficulty: diffs[i],
@@ -50,8 +48,7 @@ const updateProblemCache = async (page) => {
                 });
             }
     
-            console.log(json)
-           fs.writeFileSync('problems.json', JSON.stringify(json, null, 4));
+           fs.writeFileSync('storedProblems.json', JSON.stringify(json, null, 4));
            resolve()
         }
     })
@@ -72,14 +69,13 @@ const parseDifficulty = (value) => {
         case 'h':
         case '3':
             return "Hard";
+        default:
+            return 0;
     }
-    
-    throw new commander.InvalidOptionArgumentError('\nPlease choose one of the following: \n(easy, medium, hard)');
 }
 
 const program = new Command()
-    .option('-r --random', 'Pick a random LeetCode problem')
-    .option('-d --difficulty <option>', 'Choose problem difficulty', parseDifficulty)
+    .option('-r --random <difficulty>', 'Pick a random LeetCode problem ( easy, medium, hard, or all )', parseDifficulty)
     .option('-p --problem <string, id>', 'Choose specific problem by string or ID')
     .parse();
 
@@ -89,12 +85,32 @@ const options = program.opts();
     const browser = await puppeteer.launch({headless: false,});
     const page = await browser.newPage();
     await updateProblemCache(page);
-})();
-// if (options.difficulty !== undefined) {
-//     url += `?difficulty=${options.difficulty}`
-// }
+    let storedProblems = JSON.parse(fs.readFileSync("./problems.json")).problems;
+    let problemNameOrId = options.problem;
+    let URL;
 
-// if (options.problem !== undefined) {
-//     url += `?search=${options.problem}`
-// }
+    // get problem URL
+    if (!problemNameOrId) {
+        let difficulty = options.random || 0;
+    
+        // filter by difficulty
+        if (difficulty) {
+            storedProblems = storedProblems.filter(p => p.difficulty == difficulty);
+        }
+        
+        // randomly pick a problem
+        URL = storedProblems[Math.floor(Math.random() * storedProblems.length) + 1].url;
+    } else {
+
+        // find problem by specified args
+        storedProblems.forEach(p => {
+            if (problemNameOrId == p.id || problemNameOrId == p.name) {
+                URL = p.url;
+            }
+        })
+    }
+
+
+    page.goto(url);
+})();
 

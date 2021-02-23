@@ -1,7 +1,0 @@
--r  --random                                            Random problem
--d  --difficulty <easy, medium, hard, e, m, h>          Difficulty of problem
--p  --problem <int, string>                             Choose specific problem
-
-
-Show problem details in console.
-Give user option to accept or decline ( if random )
