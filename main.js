@@ -9,41 +9,49 @@ const getStrBetween = (string, a1, a2) => {
     return string.split(a1).pop().split(a2)[0]
 }
 
-const updateProblemCache = async () => {
+const updateProblemCache = async (page) => {
     return new Promise(async resolve => {
-        const browser = await puppeteer.launch({headless: false,});
-        const page = await browser.newPage();
         let url = 'https://leetcode.com/problemset/all/'
-    
-    
-    
-    
         await page.goto(url);
     
         // show all problems
         if (options.problem === undefined) { 
             await page.waitForSelector(formControlSelector)
             await page.select(formControlSelector, '9007199254740991')
+
+
+            const diffs = await page.$$eval('table tr td [class~="label"]', tds => tds.map((td) => {  
+                return td.innerText;
+            }));
     
-    
-            const data = await page.$$eval('table tr td', tds => tds.map((td) => {    
-                if (td.outerHTML.includes('label="#"') || td.outerHTML.includes('label="Title"')) {
-                    return td.outerHTML;
-                }
-                return null;
-            }).filter(d => d != null));
-    
-            
-    
-            let parsedData = [];
-            for (i = 0; i < data.length; i+=2) {
-                const problemID = getStrBetween(data[i], '">', '</');
-                const problemName = getStrBetween(data[i+1], '<td value="', '" label="Title">');
-                const href = getStrBetween(data[i+1], 'href="', '" data-s');
-                parsedData.push(`${problemID},${problemName},${href}`)
+            const ids = await page.$$eval('table tr [label="#"]', tds => tds.map((td) => {  
+                return td.innerText;
+            }));
+
+            const names = await page.$$eval('table tr [data-slug]', tds => tds.map((td) => {  
+                return td.innerText;
+            }));
+
+            const hrefs = await page.$$eval('table tr a', tds => tds.map((td) => {  
+                return td.href;
+            }));
+
+
+            const json = {
+                problems: []
+            }
+
+            for (i = 0; i < ids.length; i++) {
+               json.problems.push({
+                    id: ids[i],
+                    name: names[i],
+                    difficulty: diffs[i],
+                    url: hrefs[i]
+                });
             }
     
-           fs.writeFileSync('problems.txt', parsedData.join('\n'));
+            console.log(json)
+           fs.writeFileSync('problems.json', JSON.stringify(json, null, 4));
            resolve()
         }
     })
@@ -78,7 +86,9 @@ const program = new Command()
 const options = program.opts();
 
 (async () => {
-    await updateProblemCache();
+    const browser = await puppeteer.launch({headless: false,});
+    const page = await browser.newPage();
+    await updateProblemCache(page);
 })();
 // if (options.difficulty !== undefined) {
 //     url += `?difficulty=${options.difficulty}`
