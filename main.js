@@ -1,15 +1,14 @@
-const commander = require('commander');
 const chalk = require('chalk');
 const { Command } = require('commander');
 const puppeteer = require('puppeteer');
 const formControlSelector = '[class="form-control"]';
+const langOpts = ['C++', 'Java', 'Python', 'Python3', 'C', 'C#', 'JavaScript', 'Ruby', 'Swift', 'Go', 'Scala', 'Kotlin', 'Rust', 'PHP', 'TypeScript', 'Racket'];
 const fs = require('fs');
-const { url } = require('inspector');
 
 
 const updateProblemCache = async (page) => {
     return new Promise(async resolve => {
-        let url = 'https://leetcode.com/storedProblemset/all/'
+        let url = 'https://leetcode.com/problemset/all/'
         await page.goto(url);
     
         // show all storedProblems
@@ -36,11 +35,11 @@ const updateProblemCache = async (page) => {
 
 
             const json = {
-                storedProblems: []
+                problems: []
             }
 
             for (i = 0; i < ids.length; i++) {
-               json.storedProblems.push({
+               json.problems.push({
                     id: ids[i],
                     name: names[i],
                     difficulty: diffs[i],
@@ -48,7 +47,7 @@ const updateProblemCache = async (page) => {
                 });
             }
     
-           fs.writeFileSync('storedProblems.json', JSON.stringify(json, null, 4));
+           fs.writeFileSync(`${__dirname}/problems.json`, JSON.stringify(json, null, 4));
            resolve()
         }
     })
@@ -74,6 +73,15 @@ const parseDifficulty = (value) => {
     }
 }
 
+
+const findDistance = (array, e1, e2) => {
+    const ie1 = array.indexOf(e1);
+    const ie2 = array.indexOf(e2);
+
+    return ie1 > ie2 ? (array.length - ie1 + ie2) : (ie2 - ie1);
+}
+
+
 const program = new Command()
     .option('-r --random <difficulty>', 'Pick a random LeetCode problem ( easy, medium, hard, or all )', parseDifficulty)
     .option('-p --problem <string, id>', 'Choose specific problem by string or ID')
@@ -84,10 +92,10 @@ const options = program.opts();
 (async () => {
     const browser = await puppeteer.launch({headless: false,});
     const page = await browser.newPage();
-    await updateProblemCache(page);
-    let storedProblems = JSON.parse(fs.readFileSync("./problems.json")).problems;
+   // await updateProblemCache(page);
+    let storedProblems = JSON.parse(fs.readFileSync(`${__dirname}/problems.json`)).problems;
     let problemNameOrId = options.problem;
-    let URL;
+    let problem;
 
     // get problem URL
     if (!problemNameOrId) {
@@ -99,18 +107,50 @@ const options = program.opts();
         }
         
         // randomly pick a problem
-        URL = storedProblems[Math.floor(Math.random() * storedProblems.length) + 1].url;
+        problem = storedProblems[Math.floor(Math.random() * storedProblems.length) + 1];
     } else {
 
         // find problem by specified args
         storedProblems.forEach(p => {
             if (problemNameOrId == p.id || problemNameOrId == p.name) {
-                URL = p.url;
+                problem = p;
             }
         })
     }
 
 
-    page.goto(url);
+
+    // go to problem
+    await page.goto(problem.url);
+
+
+    await page.waitForSelector('[class~="select-xs__T1oT"]')
+    await page.click('[class~="select-xs__T1oT"]')
+    await page.keyboard.press('ArrowDown');
+
+    // hardcoded for now
+    let userLang = 'JavaScript';
+    let currentType = (await page.evaluate(() => Array.from(document.querySelectorAll('[class="ant-select-selection-selected-value"]'), e => e.textContent)))[0];
+
+    // Choose language
+    for (i = 0; i < findDistance(langOpts, currentType, userLang)-1; i++) {
+        await page.keyboard.press('ArrowDown');
+    }
+    await page.keyboard.press('Enter');
+
+    // grab pre-generated code from page
+    const preGenCode = (await page.$$eval('[class="CodeMirror-code"] div pre', tds => tds.map((td) => {  
+        return td.innerText;
+    }))).join('\n');
+
+
+
+    // write pre-generated code to local file
+    const dirName = problem.name.replace(/\ /, "-");
+    fs.mkdirSync(dirName);
+    fs.writeFileSync(`${dirName}/main.js`, preGenCode);
 })();
+
+
+
 
