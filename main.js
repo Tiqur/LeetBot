@@ -29,7 +29,7 @@ const updateProblemCache = async (page) => {
                 return td.innerText;
             }));
 
-            const hrefs = await page.$$eval('table tr a', tds => tds.map((td) => {  
+            const hrefs = await page.$$eval('[data-slug]', tds => tds.map((td) => {  
                 return td.href;
             }));
 
@@ -92,7 +92,7 @@ const options = program.opts();
 (async () => {
     const browser = await puppeteer.launch({headless: false,});
     const page = await browser.newPage();
-   // await updateProblemCache(page);
+    await updateProblemCache(page);
     let storedProblems = JSON.parse(fs.readFileSync(`${__dirname}/problems.json`)).problems;
     let problemNameOrId = options.problem;
     let problem;
@@ -143,14 +143,7 @@ const options = program.opts();
         return td.innerText;
     }))).join('\n');
 
-
-
-    // write pre-generated code to local file
-    const dirName = problem.name.replace(/\ /, "-");
-    fs.mkdirSync(dirName);
-    fs.writeFileSync(`${dirName}/main.js`, preGenCode);
 })();
-
 
 
 
