@@ -33,6 +33,13 @@ const updateProblemCache = async (page) => {
                 return td.href;
             }));
 
+            const locked = (await page.$$eval('table tr [label="Title"]', tds => tds.map((td) => {  
+                return td.innerHTML;
+            }))).map(e => {
+                return e.includes('Subscribe to unlock');
+            });
+
+             
 
             const json = {
                 problems: []
@@ -43,7 +50,8 @@ const updateProblemCache = async (page) => {
                     id: ids[i],
                     name: names[i],
                     difficulty: diffs[i],
-                    url: hrefs[i]
+                    url: hrefs[i],
+                    locked: locked[i]
                 });
             }
     
@@ -102,8 +110,9 @@ const options = program.opts();
         let difficulty = options.random || 0;
     
         // filter by difficulty
+        // if login is added later on, allow subscribed users to access locked content
         if (difficulty) {
-            storedProblems = storedProblems.filter(p => p.difficulty == difficulty);
+            storedProblems = storedProblems.filter(p => p.difficulty == difficulty && !p.locked);
         }
         
         // randomly pick a problem
