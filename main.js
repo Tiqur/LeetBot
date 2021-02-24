@@ -143,6 +143,14 @@ const options = program.opts();
         return td.innerText;
     }))).join('\n');
 
+
+    let description = (await page.$$eval('[class="description__24sA"] div div', tds => tds.map((td) => {  
+        return td.innerText;
+    })));
+
+    // write pre-generated code to local file
+    fs.mkdirSync(`${problem.id}`);
+    fs.writeFileSync(`${problem.id}/main.js`, `/*\n${description[0] + description[3]}\n*/\n\n\n${preGenCode}`);
 })();
 
 
