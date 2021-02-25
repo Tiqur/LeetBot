@@ -1,7 +1,9 @@
+const chalk = require('chalk');
 const formControlSelector = '[class="form-control"]';
 
 
 const fetchProblems = async (page, options) => {
+    console.log(chalk.blueBright("Fetching problems..."));
     return new Promise(async resolve => {
         let url = 'https://leetcode.com/problemset/all/';
         await page.goto(url);

@@ -16,12 +16,15 @@ const options = program.opts();
 
 
 (async () => {
+    console.log(chalk.yellowBright("Starting..."));
     const browser = await puppeteer.launch({headless: true,});
     const page = await browser.newPage();
     const problem = await scrapeProblem(options, page);
 
     // write pre-generated code to local file
+    console.log(chalk.blueBright("Writing file..."));
     fs.writeFileSync(`${problem.id}.js`, `/*\n${problem.description}\n*/\n\n\n${problem.preGenCode}`);
+    console.log(chalk.greenBright("Done!"));
 })();
 
 

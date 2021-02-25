@@ -1,7 +1,11 @@
+const chalk = require('chalk');
 const changeLanguage = require('./changeLanguage');
 
 
 const fetchProblemDetails = async (page, problem) => {
+    console.log(chalk.blueBright("Parsing details..."));
+
+
     // go to problem
     await page.goto(problem.url);
 
